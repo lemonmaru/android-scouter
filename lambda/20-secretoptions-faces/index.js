@@ -5,6 +5,7 @@ from boto3.dynamodb.conditions import Key, Attr
 from decimal import Decimal
 import json
 import urllib.parse
+import logging
 
 rekognition = boto3.client('rekognition')
 dynamodb = boto3.resource('dynamodb')
@@ -39,13 +40,31 @@ def lambda_handler(event, context):
         }
     )
     
+    #（顔分析）Start
+    #戦闘力のものととなるangryのパラメータ
+    angry = ""
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
+    detectResponse = rekognition.detect_faces(Image={'S3Object':{'Bucket':bucket,'Name':key}},Attributes=['ALL'])
+    for faceDetail in detectResponse['FaceDetails']:
+        emotions = faceDetail['Emotions']
+        #辞書型に変換
+        #dEmotions = json.loads(emotions)
+    
+        for emotion in emotions:
+            if emotion['Type'] == "ANGRY":
+                angry = emotion['Confidence']
+                logger.info(emotion['Type'])
+                logger.info(emotion['Confidence'])
+    #（顔分析）End
+    
     #検索結果の展開
     power = tableresponse['Item']['power']
     
     finalResponse ={
         "statusCode": 200,
         "headers": {
-            "x-custom-header" : "my custom header value"
+            "x-custom-header" : angry
         },
         "body": tableresponse['Item']
     }
